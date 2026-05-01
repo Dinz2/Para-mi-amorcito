@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nuestro Frasco de Recuerdos Eternos</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;600&display=swap');
+
+        :root {
+            --rose-gold: #e5b3a3;
+            --deep-love: #4a0e0e;
+            --pink: #ff85a2;
+            --gold: #f9dcc4;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #2c0712 0%, #000000 100%);
+            font-family: 'Quicksand', sans-serif;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden; /* La lluvia se encarga del movimiento */
+        }
+
+        /* Título separado del frasco */
+        header {
+            padding: 20px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        h1 {
+            font-family: 'Dancing Script', cursive;
+            font-size: clamp(2rem, 8vw, 3.5rem);
+            color: var(--pink);
+            margin: 0;
+            text-shadow: 0 0 15px rgba(255, 133, 162, 0.5);
+        }
+
+        /* Contenedor del Frasco */
+        .jar-container {
+            position: relative;
+            width: 280px;
+            height: 380px;
+            margin: 10px auto;
+            z-index: 5;
+        }
+
+        @media (min-height: 700px) {
+            .jar-container { width: 320px; height: 450px; }
+        }
+
+        .jar-glass {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 40px 40px 100px 100px;
+            box-shadow: 
+                inset 10px 0 20px rgba(255,255,255,0.1),
+                inset -10px 0 20px rgba(0,0,0,0.4),
+                0 0 40px rgba(255, 133, 162, 0.2);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .jar-cork {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 40px;
+            background: #6d4c41;
+            border-radius: 5px;
+            z-index: 3;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        #jarCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 4;
+            cursor: pointer;
+            border-radius: 40px 40px 100px 100px;
+        }
+
+        /* Lluvia de fondo */
+        #bgCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Controles */
+        .controls {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 400px;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        button {
+            background: var(--pink);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover { transform: scale(1.05); background: #ff4d6d; }
+
+        /* Modal */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            width: 85%; max-width: 350px;
+            background: white;
+            padding: 30px;
+            border-radius: 25px;
+            text-align: center;
+            z-index: 101;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: #333;
+        }
+
+        .modal.active { display: block; transform: translate(-50%, -50%) scale(1); }
+
+        .modal h2 { font-family: 'Dancing Script', cursive; color: var(--pink); font-size: 2rem; margin: 0 0 15px 0; }
+    </style>
+</head>
+<body>
+
+    <canvas id="bgCanvas"></canvas>
+
+    <header>
+        <h1>Nuestro Frasco Mágico</h1>
+        <p>Toca un recuerdo para revivirlo</p>
+    </header>
+
+    <div class="jar-container" id="jarBox">
+        <div class="jar-cork"></div>
+        <div class="jar-glass"></div>
+        <canvas id="jarCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <input type="text" id="noteInput" placeholder="Escribe un recuerdo..." maxlength="60">
+        <button onclick="addNote()">✨</button>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closeModal()"></div>
+    <div class="modal" id="modal">
+        <h2>Recuerdo Guardado</h2>
+        <p id="modalText"></p>
+        <button onclick="closeModal()" style="padding: 10px 20px; margin-top: 10px;">Cerrar</button>
+    </div>
+
+    <script>
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        const jarCanvas = document.getElementById('jarCanvas');
+        const jarCtx = jarCanvas.getContext('2d');
+        const jarBox = document.getElementById('jarBox');
+
+        let notes = [];
+        let rainElements = [];
+        const emojis = ["❤️", "💖", "✨", "🌸", "💕", "🌹", "💝"];
+
+        // --- INICIALIZACIÓN Y PERSISTENCIA ---
+
+        function init() {
+            resize();
+            loadNotes();
+            createRain();
+            animate();
+        }
+
+        function resize() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+            jarCanvas.width = jarBox.clientWidth;
+            jarCanvas.height = jarBox.clientHeight;
+        }
+
+        function saveNotes() {
+            localStorage.setItem('magic_jar_notes', JSON.stringify(notes.map(n => n.text)));
+        }
+
+        function loadNotes() {
+            const saved = localStorage.getItem('magic_jar_notes');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                parsed.forEach(text => {
+                    notes.push(new Note(text));
+                });
+            } else {
+                // Notas por defecto si está vacío
+                ["Nuestra primera cita", "Te amo mucho", "Eres mi vida"].forEach(t => notes.push(new Note(t)));
+            }
+        }
+
+        // --- LLUVIA DE FONDO ---
+
+        class RainEmoji {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * bgCanvas.width;
+                this.y = Math.random() * bgCanvas.height;
+                this.size = Math.random() * 15 + 10;
+                this.speed = Math.random() * 1 + 0.5;
+                this.emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                this.opacity = 0;
+                this.fadeSpeed = Math.random() * 0.02 + 0.005;
+                this.state = 'fadeIn'; 
+            }
+            update() {
+                this.y -= this.speed; // Flotan hacia arriba suavemente
+                if (this.state === 'fadeIn') {
+                    this.opacity += this.fadeSpeed;
+                    if (this.opacity >= 0.6) this.state = 'fadeOut';
+                } else {
+                    this.opacity -= this.fadeSpeed;
+                    if (this.opacity <= 0) this.reset();
+                }
+                if (this.y < -20) this.y = bgCanvas.height + 20;
+            }
+            draw() {
+                bgCtx.globalAlpha = this.opacity;
+                bgCtx.font = `${this.size}px serif`;
+                bgCtx.fillText(this.emoji, this.x, this.y);
+            }
+        }
+
+        function createRain() {
+            for (let i = 0; i < 40; i++) {
+                rainElements.push(new RainEmoji());
+            }
+        }
+
+        // --- NOTAS DENTRO DEL FRASCO ---
+
+        class Note {
+            constructor(text) {
+                this.text = text;
+                this.size = Math.random() * 10 + 25;
+                this.x = Math.random() * (jarCanvas.width - 60) + 30;
+                this.y = Math.random() * (jarCanvas.height - 100) + 50;
+                this.vx = (Math.random() - 0.5) * 1;
+                this.vy = (Math.random() - 0.5) * 1;
+                this.angle = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.02;
+                this.color = `hsl(${Math.random() * 30 + 340}, 80%, 75%)`;
+                this.type = Math.random() > 0.5 ? '❤️' : '💌';
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle += this.rotSpeed;
+
+                // Rebotar en los bordes del cristal
+                if (this.x < 30 || this.x > jarCanvas.width - 30) this.vx *= -1;
+                if (this.y < 50 || this.y > jarCanvas.height - 40) this.vy *= -1;
+            }
+            draw() {
+                jarCtx.save();
+                jarCtx.translate(this.x, this.y);
+                jarCtx.rotate(this.angle);
+                
+                // Efecto de brillo
+                jarCtx.shadowBlur = 10;
+                jarCtx.shadowColor = this.color;
+                
+                jarCtx.font = `${this.size}px serif`;
+                jarCtx.textAlign = "center";
+                jarCtx.textBaseline = "middle";
+                jarCtx.fillText(this.type, 0, 0);
+                
+                jarCtx.restore();
+            }
+        }
+
+        function addNote() {
+            const input = document.getElementById('noteInput');
+            if (input.value.trim() !== "") {
+                const newNote = new Note(input.value);
+                notes.push(newNote);
+                saveNotes();
+                input.value = "";
+            }
+        }
+
+        // --- ANIMACIÓN PRINCIPAL ---
+
+        function animate() {
+            // Limpiar fondos
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            jarCtx.clearRect(0, 0, jarCanvas.width, jarCanvas.height);
+
+            // Dibujar Lluvia
+            rainElements.forEach(re => {
+                re.update();
+                re.draw();
+            });
+
+            // Dibujar Notas
+            notes.forEach(note => {
+                note.update();
+                note.draw();
+            });
+
+            // Efecto de "Llenado" (brillo acumulado en el fondo del frasco)
+            const fillLevel = Math.min(notes.length * 2, 50);
+            const gradient = jarCtx.createLinearGradient(0, jarCanvas.height, 0, jarCanvas.height - fillLevel);
+            gradient.addColorStop(0, 'rgba(255, 133, 162, 0.2)');
+            gradient.addColorStop(1, 'transparent');
+            jarCtx.fillStyle = gradient;
+            jarCtx.fillRect(0, jarCanvas.height - fillLevel, jarCanvas.width, fillLevel);
+
+            requestAnimationFrame(animate);
+        }
+
+        // --- INTERACCIÓN ---
+
+        jarCanvas.addEventListener('click', (e) => {
+            const rect = jarCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            notes.forEach(note => {
+                const dist = Math.hypot(x - note.x, y - note.y);
+                if (dist < 25) {
+                    showModal(note.text);
+                }
+            });
+        });
+
+        function showModal(text) {
+            document.getElementById('modalText').innerText = text;
+            document.getElementById('modal').classList.add('active');
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        window.addEventListener('resize', resize);
+        
+        init();
+
+    </script>
+</body>
+</html>
